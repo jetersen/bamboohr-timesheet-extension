@@ -5,7 +5,6 @@
 		"build": "parcel build",
 		"lint": "run-p lint:*",
 		"lint-fix": "run-p 'lint:* -- --fix'",
-		"lint:css": "stylelint source/**/*.css",
 		"lint:js": "xo",
 		"test": "run-p lint:* build",
 		"watch": "parcel watch --no-hmr --no-cache --no-content-hash"
