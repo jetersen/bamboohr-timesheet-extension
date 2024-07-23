@@ -1,33 +1,21 @@
-# browser-extension-template
+# bamboohr-timesheet-extension
 
-[link-rgh]: https://github.com/sindresorhus/refined-github
-[link-ngh]: https://github.com/sindresorhus/notifier-for-github
-[link-hfog]: https://github.com/sindresorhus/hide-files-on-github
-[link-tsconfig]: https://github.com/sindresorhus/tsconfig
 [link-options-sync]: https://github.com/fregante/webext-options-sync
 [link-cws-keys]: https://github.com/fregante/chrome-webstore-upload-keys
 [link-amo-keys]: https://addons.mozilla.org/en-US/developers/addon/api/key
 
-> Cross-browser extension boilerplate - barebones template with Parcel 2, options handler and auto-publishing.
-
-Screenshot of extension options:
-
-![Sample extension options output](media/previewer.png)
+> A browser extension to automagically fill out the timesheet on BambooHR.
 
 ## Features
 
-- Uses Manifest v3
-- Use npm dependencies thanks to Parcel 2.
-- [Auto-syncing options](#auto-syncing-options).
-- [Auto-publishing](#publishing) with auto-versioning and support for manual releases.
+- Automatically fill out the timesheet on BambooHR with `7,4` hours for each day.
 
 ## Getting started
 
-### 1️⃣ Create your own copy
+Install the extension from the [Chrome Web Store](https://chrome.google.com/webstore/detail/bamboohr-timesheet-extensi/)
+or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/bamboohr-timesheet-extension/).
 
-1. Click [<kbd>Use this template</kbd>](https://github.com/fregante/browser-extension-template/generate) to make a copy of your own. 😉
-
-Note: When you create a repository from the template, the [Template Cleanup](.github/workflows/template-cleanup.yml) workflow will be triggered to delete and edit template-specific resources. Wait a moment until the workflow finishes (you will see a commit pushed with 'Template cleanup' message).
+## Extension
 
 ### 🛠 Build locally
 

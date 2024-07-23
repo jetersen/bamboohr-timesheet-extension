@@ -1,5 +1,6 @@
 {
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"build": "parcel build",
 		"lint": "run-p lint:*",
@@ -7,7 +8,7 @@
 		"lint:css": "stylelint source/**/*.css",
 		"lint:js": "xo",
 		"test": "run-p lint:* build",
-		"watch": "parcel watch --no-hmr"
+		"watch": "parcel watch --no-hmr --no-cache --no-content-hash"
 	},
 	"browserslist": [
 		"last 1 Chrome version",
