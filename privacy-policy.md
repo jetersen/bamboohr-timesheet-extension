@@ -1,4 +1,4 @@
-# Privacy Policy for browser-extension-template
+# Privacy Policy for bamboohr-timesheet-extension
 
 No data or personal information is collected by bamboohr-timesheet-extension.
 
