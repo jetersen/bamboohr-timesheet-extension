@@ -9,7 +9,7 @@ async function init() {
 	for (const x of filteredDivs) {
 		const input = x.querySelector('.TimesheetSlat__input');
 		// Exclude input if it is disabled or has a value
-		if (input && !input.disabled) {
+		if (input && !input.disabled && !input.value) {
 			nativeInputValueSetter.call(input, '7,4');
 			input.dispatchEvent(inputEvent);
 			inputChanged = true;
