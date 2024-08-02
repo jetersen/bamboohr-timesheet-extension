@@ -12,7 +12,7 @@
 
 ## Getting started
 
-Install the extension from the [Chrome Web Store](https://chrome.google.com/webstore/detail/bamboohr-timesheet-extensi/)
+Install the extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/bamboohr-timesheet-extens/fpfibmnbfankihbpmgapkhpchnkmeboc)
 or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/bamboohr-timesheet-extension/).
 
 ## Extension
