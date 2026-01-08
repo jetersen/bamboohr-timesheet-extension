@@ -40,7 +40,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: source
-          path: source/*.js
+          path: source
       - name: Create release
         if: env.DAILY_VERSION_CREATED
         env:
