@@ -86,7 +86,6 @@ jobs:
           name: source
           path: source
       - run: npx web-ext@9 sign --channel listed --approval-timeout 0 --source-dir "${{ github.workspace }}/source" --artifacts-dir "${{ github.workspace }}/extension" --upload-source-code
-        working-directory: extension
         env:
           WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
           WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
