@@ -83,6 +83,10 @@ jobs:
         with:
           name: source
           path: source
+      - name: List extension directory
+        run: ls -la extension
+      - name: List source directory
+        run: ls -la source
       - run: npx web-ext@9 sign --channel listed --approval-timeout 0 --source-dir source --artifacts-dir extension --upload-source-code
         working-directory: extension
         env:
