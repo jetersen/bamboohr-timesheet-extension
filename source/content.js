@@ -7,8 +7,8 @@ function fillTimesheet() {
 	}
 
 	// Exclude divs with extra info items most likely to be sick days or holidays
-	const filteredDivs = Array.from(divs).filter(x => !x.querySelector('.TimesheetSlat__extraInfoItem'));
-	const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+	const filteredDivs = [...divs].filter(x => !x.querySelector('.TimesheetSlat__extraInfoItem'));
+	const nativeInputValueSetter = Object.getOwnPropertyDescriptor(globalThis.HTMLInputElement.prototype, 'value').set;
 	const inputEvent = new Event('input', {bubbles: true});
 	let inputChanged = false;
 	for (const x of filteredDivs) {
@@ -53,7 +53,7 @@ function waitForElements() {
 
 	observer.observe(document.body, {
 		childList: true,
-		subtree: true
+		subtree: true,
 	});
 
 	// Fallback: stop observing after 10 seconds
@@ -61,8 +61,9 @@ function waitForElements() {
 		if (debounceTimer) {
 			clearTimeout(debounceTimer);
 		}
+
 		observer.disconnect();
-	}, 10000);
+	}, 10_000);
 }
 
 if (document.readyState === 'loading') {
