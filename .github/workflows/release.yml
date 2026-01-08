@@ -88,7 +88,6 @@ jobs:
       - uses: actions/download-artifact@v7
         with:
           name: source
-          path: source.zip
       - run: npx web-ext@9 sign --channel listed --approval-timeout 0 --source-dir extension --upload-source-code source.zip
         env:
           WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
