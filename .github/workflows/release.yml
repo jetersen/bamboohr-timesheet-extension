@@ -1,94 +1,121 @@
-env:
-  DIRECTORY: distribution
-  PROJECT_NAME: bamboohr-timesheet-extension
-
-# FILE GENERATED WITH: npx ghat fregante/ghatemplates/webext
-# SOURCE: https://github.com/fregante/ghatemplates
-
 name: Release
+
 on:
-  workflow_dispatch: null
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
-  Version:
-    outputs:
-      created: ${{ env.DAILY_VERSION_CREATED }}
+  build:
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+    outputs:
+      created: ${{ steps.version.outputs.created }}
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: voidzero-dev/setup-vp@v1.22.0
         with:
           node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - name: Test and build
-        run: npm test
+          cache: true
+          run-install: |
+            args: ['--frozen-lockfile']
+      - run: vp run test
+      - run: npm audit
       - name: Create tag if necessary
-        uses: fregante/daily-version-action@v2
-      - name: Update manifest.json with version ${{ env.DAILY_VERSION}}
-        if: env.DAILY_VERSION_CREATED
+        id: version
+        uses: fregante/daily-version-action@v3
+      - name: Build versioned packages
+        if: steps.version.outputs.created
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          npx dot-json@1 "$DIRECTORY/manifest.json" version "$DAILY_VERSION"
-          npx dot-json@1 "source/manifest.json" version "$DAILY_VERSION"
-      - name: Ready for "submit" jobs
-        if: env.DAILY_VERSION_CREATED
-        uses: actions/upload-artifact@v6
+          node --input-type=module <<'JS'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const path = 'source/manifest.json';
+          const manifest = JSON.parse(readFileSync(path, 'utf8'));
+          manifest.version = process.env.RELEASE_VERSION;
+          writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+          JS
+          vp fmt source/manifest.json
+          vp build
+          vp build --mode firefox
+          node scripts/check-build.mjs
+      - uses: actions/upload-artifact@v6
+        if: steps.version.outputs.created
         with:
-          name: extension
-          path: ${{ env.DIRECTORY }}
-      - name: Create zipped source directory
-        if: env.DAILY_VERSION_CREATED
+          name: extension-chrome
+          path: distribution
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v6
+        if: steps.version.outputs.created
+        with:
+          name: extension-firefox
+          path: distribution-firefox
+          if-no-files-found: error
+      - name: Archive reproducible sources
+        if: steps.version.outputs.created
         run: |
-          zip -r "source.zip" ./source/*
-      - name: Source code release
-        if: env.DAILY_VERSION_CREATED
-        uses: actions/upload-artifact@v6
+          zip -qr source.zip source test scripts package.json package-lock.json vite.config.ts .nvmrc .editorconfig .gitignore readme.md LICENSE
+      - uses: actions/upload-artifact@v6
+        if: steps.version.outputs.created
         with:
           name: source
           path: source.zip
+          if-no-files-found: error
       - name: Create release
-        if: env.DAILY_VERSION_CREATED
+        if: steps.version.outputs.created
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: ${{ env.DIRECTORY }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          FILENAME="$PROJECT_NAME-$DAILY_VERSION-for-local-testing-only.zip"
-          zip -r "$FILENAME" ./*
-          gh release create "$DAILY_VERSION" --generate-notes "$FILENAME"
-  Chrome:
-    if: needs.Version.outputs.created
-    needs: Version
-    name: Submit (Chrome)
-    environment: Chrome
+          (cd distribution && zip -qr ../chrome-unsigned.zip .)
+          (cd distribution-firefox && zip -qr ../firefox-unsigned.zip .)
+          gh release create "$RELEASE_VERSION" --generate-notes chrome-unsigned.zip firefox-unsigned.zip
+
+  publish:
+    needs: build
+    if: needs.build.outputs.created
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chrome
+            environment: Chrome
+          - browser: firefox
+            environment: Firefox
+    environment: ${{ matrix.environment }}
     steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1.22.0
+        with:
+          node-version-file: .nvmrc
+          run-install: false
       - uses: actions/download-artifact@v7
         with:
-          name: extension
+          name: extension-${{ matrix.browser }}
           path: extension
-      - run: npx chrome-webstore-upload-cli@3 upload --auto-publish
+      - uses: actions/download-artifact@v7
+        if: matrix.browser == 'firefox'
+        with:
+          name: source
+      - name: Publish to Chrome Web Store
+        if: matrix.browser == 'chrome'
+        run: npx chrome-webstore-upload-cli@3 upload --auto-publish
         working-directory: extension
         env:
           EXTENSION_ID: ${{ secrets.EXTENSION_ID }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-  Firefox:
-    if: needs.Version.outputs.created
-    needs: Version
-    name: Submit (Firefox)
-    environment: Firefox
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v7
-        with:
-          name: extension
-          path: extension
-      - uses: actions/download-artifact@v7
-        with:
-          name: source
-      - run: npx web-ext@9 sign --channel listed --approval-timeout 0 --source-dir extension --upload-source-code source.zip
+      - name: Publish to Firefox Add-ons
+        if: matrix.browser == 'firefox'
+        run: npx web-ext@9 sign --channel listed --approval-timeout 0 --source-dir extension --upload-source-code source.zip
         env:
           WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
           WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}

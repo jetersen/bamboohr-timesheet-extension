@@ -9,8 +9,8 @@
 
 ## Install
 
-[link-chrome]: https://chrome.google.com/webstore/detail/bamboohr-timesheet-extens/fpfibmnbfankihbpmgapkhpchnkmeboc 'Version published on Chrome Web Store'
-[link-firefox]: https://addons.mozilla.org/firefox/addon/bamboohr-timesheet-extension/ 'Version published on Mozilla Add-ons'
+[link-chrome]: https://chrome.google.com/webstore/detail/bamboohr-timesheet-extens/fpfibmnbfankihbpmgapkhpchnkmeboc "Version published on Chrome Web Store"
+[link-firefox]: https://addons.mozilla.org/firefox/addon/bamboohr-timesheet-extension/ "Version published on Mozilla Add-ons"
 
 [<img src="https://raw.githubusercontent.com/alrra/browser-logos/90fdf03c/src/chrome/chrome.svg" width="48" alt="Chrome" valign="middle">][link-chrome] [<img valign="middle" src="https://img.shields.io/chrome-web-store/v/fpfibmnbfankihbpmgapkhpchnkmeboc.svg?label=%20">][link-chrome] and other Chromium based browsers
 
@@ -22,21 +22,28 @@ Install the extension from the [Chrome Web Store][link-chrome] or [Firefox Add-o
 
 ### Build locally
 
-1. Clone the repository: `git clone https://github.com/jetersen/bamboohr-timesheet-extension`
-2. Run `npm install` to install all required dependencies
-3. Run `npm run build`
+Use Node.js 24 LTS (`nvm use` reads `.nvmrc`).
 
-The build step will create the `distribution` folder containing the generated extension.
+1. Run `npm ci` to install dependencies.
+2. Run `npm run build` for the Chrome extension in `distribution`.
+3. Run `npm run build:firefox` for the Firefox extension in `distribution-firefox`.
 
-Run `npm test` for linting, DOM regression tests, and a production build. The regression tests use isolated fixtures and never contact BambooHR.
+Vite+ runs the build, linting, formatting, and Vitest tests. CRXJS packages the manifest and content script as a self-contained bundle. Configuration lives in `vite.config.ts`; no global tools are required.
+
+Run `npm test` for static checks, DOM regression tests, both production builds, and package validation. The regression tests use isolated fixtures and never contact BambooHR. Run `npm run lint-fix` to apply the default formatter and automatic lint fixes.
 
 ### Run the extension
 
-Using [web-ext](https://extensionworkshop.com/documentation/develop/getting-started-with-web-ext/) is recommended for automatic reloading and running in a dedicated browser instance.
+1. Run `npm run dev` for Chrome or `npm run dev:firefox` for Firefox.
+2. In Chrome, open `chrome://extensions`, enable Developer mode, and load `distribution` using **Load unpacked**.
+3. In Firefox, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `distribution-firefox/manifest.json`.
 
-1. Run `npm run watch` to watch for file changes and build continuously
-2. Run `npm install --global web-ext` (only for the first time)
-3. In another terminal, run `web-ext run -t chromium`
+Use a dedicated browser profile for development. The content script automatically fills and saves eligible timesheet entries. Automatic extension reloads are disabled to avoid repeating those actions after code edits; reload the extension and target page manually when testing changes.
+
+### Publishing
+
+The Test workflow runs checks, both browser builds, package validation, and `npm audit` on pushes and pull requests. Pushes to `main` also run the Release workflow, which publishes browser-specific packages to both stores using calendar versions (`YY.M.D`, with a time suffix for additional releases on the same day). The workflow can also be run manually. Publishing uses the `Chrome` and `Firefox` environments for store credentials. The Firefox source upload includes the lockfile, build configuration, and build instructions needed to reproduce the package.
 
 ## License
+
 See [LICENSE](./LICENSE)
