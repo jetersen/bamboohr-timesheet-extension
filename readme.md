@@ -4,7 +4,8 @@
 
 ## Features
 
-- Automatically fill out the timesheet on BambooHR with `7,4` hours for each day.
+- Automatically fill empty, editable weekday entries on BambooHR with `7,4` hours and save the changes, excluding entries with leave information.
+- Wait for asynchronously rendered inputs and save controls, including on slow page loads.
 
 ## Install
 
@@ -26,6 +27,8 @@ Install the extension from the [Chrome Web Store][link-chrome] or [Firefox Add-o
 3. Run `npm run build`
 
 The build step will create the `distribution` folder containing the generated extension.
+
+Run `npm test` for linting, DOM regression tests, and a production build. The regression tests use isolated fixtures and never contact BambooHR.
 
 ### Run the extension
 

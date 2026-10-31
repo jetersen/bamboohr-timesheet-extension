@@ -1,92 +1,101 @@
 const log = (...args) => console.log('[BambooHR Timesheet Extension]', ...args);
+const filledInputs = new WeakSet();
+const editedInputs = new WeakSet();
+const extensionInputEvents = new WeakSet();
+const pendingInputs = new Set();
+let footerOpened = false;
 
 log('Extension loaded, waiting for timesheet entries...');
 
-function fillTimesheet() {
-	// Get all divs with timesheet entries excluding weekends
-	const divs = document.querySelectorAll('div.TimesheetSlat:not(.js-timesheet-showWeekends)');
+// Capture edits before page handlers can rerender or stop propagation.
+document.addEventListener('input', event => {
+	const input = event.target;
+	if (input instanceof HTMLInputElement && input.matches('.TimesheetSlat__input') && !extensionInputEvents.has(event)) {
+		editedInputs.add(input);
+		pendingInputs.delete(input);
+	}
+}, true);
 
-	if (divs.length === 0) {
-		log('No timesheet entries found yet');
-		return false; // Elements not found yet
+function fillTimesheet() {
+	const divs = document.querySelectorAll('div.TimesheetSlat:not(.js-timesheet-showWeekends)');
+	const nativeInputValueSetter = Object.getOwnPropertyDescriptor(globalThis.HTMLInputElement.prototype, 'value').set;
+	let filledCount = 0;
+
+	for (const div of divs) {
+		// Exclude sick days, holidays, and other leave entries.
+		if (div.querySelector('.TimesheetSlat__extraInfoItem')) {
+			continue;
+		}
+
+		const input = div.querySelector('.TimesheetSlat__input');
+		if (!input || input.disabled || input.readOnly || input.value || filledInputs.has(input) || editedInputs.has(input)) {
+			continue;
+		}
+
+		// Remember each input so later mutations do not undo a user's edits.
+		filledInputs.add(input);
+		nativeInputValueSetter.call(input, '7,4');
+		pendingInputs.add(input);
+		const inputEvent = new Event('input', {bubbles: true});
+		extensionInputEvents.add(inputEvent);
+		input.dispatchEvent(inputEvent);
+		filledCount++;
 	}
 
-	// Exclude divs with extra info items most likely to be sick days or holidays
-	const filteredDivs = [...divs].filter(x => !x.querySelector('.TimesheetSlat__extraInfoItem'));
-	log(`Found ${divs.length} entries, ${filteredDivs.length} after filtering out sick days/holidays`);
-	const nativeInputValueSetter = Object.getOwnPropertyDescriptor(globalThis.HTMLInputElement.prototype, 'value').set;
-	const inputEvent = new Event('input', {bubbles: true});
-	let inputChanged = false;
-	let filledCount = 0;
-	let skippedDisabled = 0;
-	let skippedFilled = 0;
-	for (const x of filteredDivs) {
-		const input = x.querySelector('.TimesheetSlat__input');
-		// Exclude input if it is disabled or has a value
-		if (input && !input.disabled && !input.value) {
-			nativeInputValueSetter.call(input, '7,4');
-			input.dispatchEvent(inputEvent);
-			inputChanged = true;
-			filledCount++;
-		} else if (input?.disabled) {
-			skippedDisabled++;
-		} else if (input?.value) {
-			skippedFilled++;
+	if (filledCount > 0) {
+		log(`Filled ${filledCount} inputs`);
+	}
+
+	for (const input of pendingInputs) {
+		if (!input.isConnected || !input.value) {
+			pendingInputs.delete(input);
 		}
 	}
 
-	log(`Filled ${filledCount} inputs, skipped ${skippedDisabled} disabled, skipped ${skippedFilled} already filled`);
-
-	if (inputChanged) {
-		log('Submitting timesheet');
-		document.dispatchEvent(new CustomEvent('SiteFooter:open'));
-		document.querySelector('button.SiteFooter__action.SiteFooter__action--primary').click();
-	} else {
-		log('No changes needed');
-	}
-
-	return true; // Successfully processed
-}
-
-function waitForElements() {
-	// Try immediately first
-	if (fillTimesheet()) {
+	if (pendingInputs.size === 0) {
+		footerOpened = false;
 		return;
 	}
 
-	// If not found, use MutationObserver to wait for elements
-	let debounceTimer = null;
-	const observer = new MutationObserver((mutations, obs) => {
-		// Clear existing timer
-		if (debounceTimer) {
-			clearTimeout(debounceTimer);
-		}
+	if (!footerOpened) {
+		footerOpened = true;
+		document.dispatchEvent(new CustomEvent('SiteFooter:open'));
+	}
 
-		// Wait 500ms after last mutation before attempting to fill
-		debounceTimer = setTimeout(() => {
-			if (fillTimesheet()) {
-				obs.disconnect();
-			}
+	// The footer can mount or become enabled after the inputs render.
+	const submit = document.querySelector('button.SiteFooter__action.SiteFooter__action--primary');
+	if (submit && !submit.disabled) {
+		pendingInputs.clear();
+		footerOpened = false;
+		log('Saving timesheet');
+		submit.click();
+	}
+}
+
+function waitForElements() {
+	let scanTimer;
+	const scheduleScan = () => {
+		// Coalesce mutations without letting continuous page activity starve the scan.
+		scanTimer ??= setTimeout(() => {
+			scanTimer = undefined;
+			fillTimesheet();
 		}, 500);
-	});
+	};
 
+	const observer = new MutationObserver(scheduleScan);
 	observer.observe(document.body, {
 		childList: true,
 		subtree: true,
+		attributes: true,
+		attributeFilter: ['disabled', 'readonly', 'class'],
 	});
 
-	// Fallback: stop observing after 10 seconds
-	setTimeout(() => {
-		if (debounceTimer) {
-			clearTimeout(debounceTimer);
-		}
-
-		observer.disconnect();
-	}, 10_000);
+	// Keep watching for asynchronous rendering and later batches of entries.
+	fillTimesheet();
 }
 
 if (document.readyState === 'loading') {
-	document.addEventListener('DOMContentLoaded', waitForElements);
+	document.addEventListener('DOMContentLoaded', waitForElements, {once: true});
 } else {
 	waitForElements();
 }
